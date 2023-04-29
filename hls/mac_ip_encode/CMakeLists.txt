@@ -26,10 +26,14 @@ set(DATA_WIDTH 8 CACHE STRING "Width of data path in bytes")
 set(CLOCK_PERIOD 6.4 CACHE STRING "Target clock period in nanoseconds")
 
 
-# Find Xilinx Vivado HLS
-find_package(VivadoHLS REQUIRED)
-if (NOT VIVADO_HLS_FOUND)
-  message(FATAL_ERROR "Vivado HLS not found.")
+# Find Xilinx Vitis HLS first
+find_package(VitisHLS)
+if (NOT VITIS_HLS_FOUND)
+   # Find Xilinx Vivado HLS if Vitis HLS not found
+   find_package(VivadoHLS REQUIRED)
+   if (NOT VIVADO_HLS_FOUND)
+     message(FATAL_ERROR "Both Vitis HLS and Vivado HLS not found.")
+   endif()
 endif()
 
 
@@ -55,10 +59,17 @@ foreach (target ${HLS_TARGETS})
       add_custom_target(${target})
    endif()
 
-   add_custom_target(${target}.${PROJECT_NAME}
-      COMMAND ${VIVADO_HLS_BINARY} -f make.tcl -tclargs ${target}
-      DEPENDS ${EXAMPLE_HLS_DEPENDS})
-   add_dependencies(${target} ${target}.${PROJECT_NAME})
+   if (VITIS_HLS_FOUND)
+      add_custom_target(${target}.${PROJECT_NAME}
+         COMMAND ${VITIS_HLS_BINARY} -f make.tcl -tclargs ${target}
+         DEPENDS ${EXAMPLE_HLS_DEPENDS})
+      add_dependencies(${target} ${target}.${PROJECT_NAME})
+   else()
+      add_custom_target(${target}.${PROJECT_NAME}
+         COMMAND ${VIVADO_HLS_BINARY} -f make.tcl -tclargs ${target}
+         DEPENDS ${EXAMPLE_HLS_DEPENDS})
+      add_dependencies(${target} ${target}.${PROJECT_NAME})
+   endif()
 endforeach()
 
 #target dependencies
